@@ -1,6 +1,6 @@
 import "./style.css";
 
-import { connect } from "./connection.ts";
+import { connect, erase } from "./connection.ts";
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
@@ -15,3 +15,4 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 `;
 connect(document.querySelector<HTMLButtonElement>("#connect")!);
+erase(document.querySelector<HTMLButtonElement>("#erase")!);
