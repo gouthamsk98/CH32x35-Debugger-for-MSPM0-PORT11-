@@ -1,5 +1,6 @@
 import { ResponseHandler } from "./response_handler";
 import { Response } from "./types";
+import { ErrCode } from "./types";
 export class UsbTransport {
   //! Constants about protocol and devices.
   static ENDPOINT_OUT = 0x01;
@@ -109,8 +110,9 @@ export class UsbTransport {
   ): Promise<Response> {
     const result = await this.device.transferIn(UsbTransport.ENDPOINT_IN, 64);
     if (result.data) {
+      console.log(result.data);
       return ResponseHandler.fromRaw(new Uint8Array(result.data.buffer));
     }
-    throw new Error("Failed to receive data");
+    return { type: "Err", code: ErrCode.read_timeout };
   }
 }

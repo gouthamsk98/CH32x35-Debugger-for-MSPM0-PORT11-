@@ -1,6 +1,9 @@
+import { resolve } from "path";
 import { UsbTransport } from "./transport_handler";
-
+import { Response } from "./types";
 export class CH_loader extends UsbTransport {
+  FLASH_ADDRESS = 0x00000000;
+  BSL_ENABLED = false;
   static VENDOR_ID = 0x6249;
   static PRODUCT_ID = 0x7031;
   static CDC_DATA_INTERFACE = 0;
@@ -27,6 +30,7 @@ export class CH_loader extends UsbTransport {
     super(device, CH_loader.CDC_DATA_INTERFACE);
   }
   static checkSum(buf: Uint8Array, length: number): number {
+    console.log("data is", buf, length);
     let temp = 0;
 
     for (let i = 2; i < length - 1; i++) {
@@ -48,7 +52,7 @@ export class CH_loader extends UsbTransport {
     const frameLength = length + 2; // size of data + cmd + function
     const txFrame = new Uint8Array(size);
 
-    // "SEND FRAME : [0xF9 ,0xFF, L1,L2,L3,L4 ,cmd, function, parameter seq... , CKSM]"
+    // SEND FRAME: [0xF9, 0xFF, L1, L2, L3, L4, cmd, function, parameter seq..., CKSM]
     txFrame[0] = 0xf9;
     txFrame[1] = 0xff;
     txFrame[2] = (frameLength >> 24) & 0xff;
@@ -57,26 +61,75 @@ export class CH_loader extends UsbTransport {
     txFrame[5] = frameLength & 0xff;
     txFrame[6] = cmd;
     txFrame[7] = fun;
+    txFrame.set(data, 8); // Insert 'data' starting at index 8
+    txFrame[txFrame.length - 1] = CH_loader.checkSum(
+      txFrame,
+      txFrame.length - 1
+    );
 
-    txFrame.set(data, 8);
-
-    const checksum = CH_loader.checkSum(txFrame, txFrame.length);
-    const txFrameWithChecksum = new Uint8Array(size + 1);
-    txFrameWithChecksum.set(txFrame);
-    txFrameWithChecksum[size] = checksum;
-
-    return txFrameWithChecksum;
+    return txFrame;
   }
-  async eraseFlash() {
+  async enableBSL() {
     const frame = this.frameToUSB(
       this.FOR_WRITE,
       this.START,
-      new Uint8Array([]),
+      new Uint8Array(),
       0
     );
-    console.log("frame is", frame);
+    console.log("frame is 1", frame);
+    await this.sendRaw(frame);
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const res: Response = await this.recv();
+      console.log("res 1", res);
+      if (res.type == "Ok") {
+        this.BSL_ENABLED = true;
+        break;
+      }
+    }
+  }
+  intelHexToUint8Array(hexString: string) {
+    const lines = hexString.trim().split("\n");
+    const data: Array<number> = [];
+    lines.forEach((line) => {
+      if (line.startsWith(":")) {
+        const byteCount = parseInt(line.substr(1, 2), 16);
+        const dataStartIndex = 9; // Data starts after 9 characters (: + 2-byte count + 4-byte address + 2-byte record type)
+        const dataEndIndex = dataStartIndex + byteCount * 2;
+
+        for (let i = dataStartIndex; i < dataEndIndex; i += 2) {
+          data.push(parseInt(line.substr(i, 2), 16));
+        }
+      }
+    });
+
+    return new Uint8Array(data);
+  }
+  async eraseFlash() {
+    if (!this.BSL_ENABLED) await this.enableBSL();
+    const frame = this.frameToUSB(
+      this.FOR_WRITE,
+      this.ERASE,
+      new Uint8Array(),
+      0
+    );
     this.sendRaw(frame);
     const res = await this.recv();
-    console.log(res);
+    if (res.type == "Ok") CH_loader.debugLog("Erase Completed");
+  }
+  async flash() {
+    if (!this.BSL_ENABLED) await this.enableBSL();
+    const tragetData = new Uint8Array([
+      (this.FLASH_ADDRESS >> 24) & 0xff,
+      (this.FLASH_ADDRESS >> 16) & 0xff,
+      (this.FLASH_ADDRESS >> 8) & 0xff,
+      this.FLASH_ADDRESS & 0xff,
+      (length >> 24) & 0xff,
+      (length >> 16) & 0xff,
+      (length >> 8) & 0xff,
+      length & 0xff,
+    ]);
+    const frame = this.frameToUSB(this.FOR_WRITE, this.WRITE, tragetData, 8);
+    this.sendRaw(frame);
   }
 }
