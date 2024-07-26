@@ -1,4 +1,3 @@
-import { resolve } from "path";
 import { UsbTransport } from "./transport_handler";
 import { Response } from "./types";
 export class CH_loader extends UsbTransport {
@@ -27,7 +26,7 @@ export class CH_loader extends UsbTransport {
 
   WRITE_OK = 0x08;
   constructor(device: USBDevice) {
-    super(device, CH_loader.CDC_DATA_INTERFACE);
+    super(device);
   }
   static checkSum(buf: Uint8Array, length: number): number {
     console.log("data is", buf, length);
