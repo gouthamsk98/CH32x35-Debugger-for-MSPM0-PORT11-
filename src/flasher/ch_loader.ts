@@ -70,6 +70,7 @@ export class CH_loader extends UsbTransport {
     return txFrame;
   }
   async enableBSL() {
+    CH_loader.debugLog("Enabling Bootloader ...");
     const frame = this.frameToUSB(
       this.FOR_WRITE,
       this.START,
@@ -79,13 +80,14 @@ export class CH_loader extends UsbTransport {
     console.log("frame is 1", frame);
     await this.sendRaw(frame);
     while (true) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
       const res: Response = await this.recv();
       console.log("res 1", res);
       if (res.type == "Ok") {
         this.BSL_ENABLED = true;
         break;
       }
+      CH_loader.debugLog("...");
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
   intelHexToUint8Array(hexString: string) {
@@ -117,8 +119,30 @@ export class CH_loader extends UsbTransport {
     const res = await this.recv();
     if (res.type == "Ok") CH_loader.debugLog("Erase Completed");
   }
-  async flash() {
-    if (!this.BSL_ENABLED) await this.enableBSL();
+  async startApp() {
+    const frame = this.frameToUSB(
+      this.FOR_WRITE,
+      this.START_APP,
+      new Uint8Array(),
+      0
+    );
+    await this.sendRaw(frame);
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const res: Response = await this.recv();
+      console.log("res 1", res);
+      if (res.type == "Ok") {
+        this.BSL_ENABLED = false;
+        CH_loader.debugLog("App Started");
+        break;
+      }
+    }
+  }
+  async flash(hex: string) {
+    await this.enableBSL();
+    CH_loader.debugLog("Flashing started ...");
+    const hexData = this.intelHexToUint8Array(hex);
+    const length = hexData.length;
     const tragetData = new Uint8Array([
       (this.FLASH_ADDRESS >> 24) & 0xff,
       (this.FLASH_ADDRESS >> 16) & 0xff,
@@ -130,6 +154,42 @@ export class CH_loader extends UsbTransport {
       length & 0xff,
     ]);
     const frame = this.frameToUSB(this.FOR_WRITE, this.WRITE, tragetData, 8);
-    this.sendRaw(frame);
+    const writeData = await this.sendRaw(frame);
+    console.log(
+      "data transfer is",
+      frame,
+      writeData.bytesWritten,
+      writeData.status
+    );
+    let transferred = writeData.bytesWritten;
+    const txData = new Uint8Array(length);
+    txData.set(hexData.subarray(0, length));
+    const chunkSize = 64;
+    let bytesToWrite = length;
+    let offset = 0;
+    while (bytesToWrite > 0) {
+      const chunk = txData.subarray(offset, offset + chunkSize);
+      const writeData = await this.sendRaw(chunk);
+      console.log(
+        "data transfer is",
+        chunk,
+        writeData.bytesWritten,
+        writeData.status
+      );
+      transferred = writeData.bytesWritten;
+      bytesToWrite -= transferred;
+      offset += transferred;
+      CH_loader.debugLog(`writen bytes ${offset} out of ${length} bytes`);
+    }
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const res: Response = await this.recv();
+      console.log("res 1", res);
+      if (res.type == "Ok") {
+        CH_loader.debugLog("Flashed successfully");
+        CH_loader.debugLog("Restart the device (reconnect).");
+        break;
+      }
+    }
   }
 }

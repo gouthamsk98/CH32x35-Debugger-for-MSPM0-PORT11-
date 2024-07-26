@@ -92,8 +92,8 @@ export class UsbTransport {
     return this.openNth(0);
   }
 
-  async sendRaw(raw: Uint8Array): Promise<void> {
-    await this.device.transferOut(UsbTransport.ENDPOINT_OUT, raw);
+  async sendRaw(raw: Uint8Array): Promise<USBOutTransferResult> {
+    return await this.device.transferOut(UsbTransport.ENDPOINT_OUT, raw);
   }
 
   async recvRaw(
