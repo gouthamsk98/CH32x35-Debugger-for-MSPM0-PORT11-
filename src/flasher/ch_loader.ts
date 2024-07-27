@@ -1,5 +1,6 @@
 import { UsbTransport } from "./transport_handler";
 import { Response } from "./types";
+import { ErrCode } from "./types";
 export class CH_loader extends UsbTransport {
   FLASH_ADDRESS = 0x00000000;
   BSL_ENABLED = false;
@@ -83,10 +84,14 @@ export class CH_loader extends UsbTransport {
       console.log("res 1", res);
       if (res.type == "Ok") {
         this.BSL_ENABLED = true;
+        CH_loader.debugLog("BSL enabled");
         break;
+      } else if (res.type == "Err" && res.code == ErrCode.operation_failed) {
+        CH_loader.debugLog(res.code);
+        CH_loader.debugLog("Reconnect the device");
       }
       CH_loader.debugLog("...");
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
   intelHexToUint8Array(hexString: string) {

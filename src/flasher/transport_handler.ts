@@ -93,14 +93,21 @@ export class UsbTransport {
   }
 
   async recvRaw(): Promise<Uint8Array> {
-    const result = await this.device.transferIn(UsbTransport.ENDPOINT_IN, 64);
+    const result = await this.device.transferIn(
+      UsbTransport.ENDPOINT_IN,
+      UsbTransport.MAX_PACKET_SIZE
+    );
     if (result.data) {
       return new Uint8Array(result.data.buffer);
     }
     throw new Error("Failed to receive data");
   }
   async recv(): Promise<Response> {
-    const result = await this.device.transferIn(UsbTransport.ENDPOINT_IN, 64);
+    console.log("waiting for data...");
+    const result = await this.device.transferIn(
+      UsbTransport.ENDPOINT_IN,
+      UsbTransport.MAX_PACKET_SIZE
+    );
     if (result.data) {
       console.log(result.data);
       return ResponseHandler.fromRaw(new Uint8Array(result.data.buffer));
