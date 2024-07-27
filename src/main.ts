@@ -5,6 +5,7 @@ import { connect, erase, flash, readFile, reset } from "./connection.ts";
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
     <h1>Port11 ch32x35_debugger</h1>
+    <h2>Only support with Chrome Browser</h2>
     <button id="connect" type="button">Connect</button
       <input type="file" id="myfile" name="myfile" accept=".hex">
       <input type="file" id="myfile" name="myfile"><br><br>
