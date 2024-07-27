@@ -9,13 +9,14 @@ export class UsbTransport {
   static MAX_PACKET_SIZE = 64;
   static SECTOR_SIZE = 1024;
   static DEFAULT_TRANSPORT_TIMEOUT_MS = 1000;
-
+  static enableLog = true;
   private device: USBDevice;
 
   constructor(device: USBDevice) {
     this.device = device;
   }
   static debugLog(message: string) {
+    if (!UsbTransport.enableLog) return;
     const consoleTextarea =
       document.querySelector<HTMLTextAreaElement>("#console")!;
     consoleTextarea.value += message + "\n";
@@ -87,7 +88,9 @@ export class UsbTransport {
   static async openAny(): Promise<UsbTransport> {
     return this.openNth(0);
   }
-
+  async disconnect() {
+    if (this.device) this.device.close();
+  }
   async sendRaw(raw: Uint8Array): Promise<USBOutTransferResult> {
     return await this.device.transferOut(UsbTransport.ENDPOINT_OUT, raw);
   }

@@ -124,6 +124,7 @@ export class CH_loader extends UsbTransport {
     if (res.type == "Ok") CH_loader.debugLog("Erase Completed");
   }
   async startApp() {
+    if (this.BSL_ENABLED) CH_loader.debugLog("Disabling BSL mode ...");
     const frame = this.frameToUSB(
       this.FOR_WRITE,
       this.START_APP,
@@ -132,13 +133,14 @@ export class CH_loader extends UsbTransport {
     );
     await this.sendRaw(frame);
     while (true) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const res: Response = await this.recv();
-      console.log("res 1", res);
       if (res.type == "Ok") {
         this.BSL_ENABLED = false;
         CH_loader.debugLog("App Started");
         break;
+      } else if (res.type == "Err" && res.code == ErrCode.operation_failed) {
+        CH_loader.debugLog(res.code);
       }
     }
   }
@@ -191,7 +193,10 @@ export class CH_loader extends UsbTransport {
       console.log("res 1", res);
       if (res.type == "Ok") {
         CH_loader.debugLog("Flashed successfully");
-        CH_loader.debugLog("Restart the device (reconnect).");
+        CH_loader.debugLog("Restart the device (reset).");
+        break;
+      } else if (res.type == "Err" && res.code == ErrCode.operation_failed) {
+        CH_loader.debugLog(res.code);
         break;
       }
     }

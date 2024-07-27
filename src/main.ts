@@ -1,6 +1,6 @@
 import "./style.css";
 
-import { connect, erase, flash, readFile } from "./connection.ts";
+import { connect, erase, flash, readFile, reset } from "./connection.ts";
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
@@ -10,6 +10,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <input type="file" id="myfile" name="myfile"><br><br>
       <button id="erase" type="button">Erase</button>
       <button id="flash" type="button">Flash</button>
+      <button id="reset" type="button">Reset</button>
       <textarea id="console" rows="15" cols="50" readonly></textarea>
   </div>
 `;
@@ -17,3 +18,4 @@ connect(document.querySelector<HTMLButtonElement>("#connect")!);
 erase(document.querySelector<HTMLButtonElement>("#erase")!);
 flash(document.querySelector<HTMLButtonElement>("#flash")!);
 readFile(document.querySelector<HTMLInputElement>("#myfile")!);
+reset(document.querySelector<HTMLButtonElement>("#reset")!);
